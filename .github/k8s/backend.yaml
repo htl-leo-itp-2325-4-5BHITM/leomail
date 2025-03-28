@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quarkus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: quarkus
+  template:
+    metadata:
+      labels:
+        app: quarkus
+    spec:
+      initContainers:
+        - name: init-generate-encryption-key
+          image: alpine
+          securityContext:
+            runAsUser: 0
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              apk add --no-cache openssl
+              mkdir -p /etc/encryption
+              echo "Generating encryption key..."
+              openssl rand -base64 32 > /etc/encryption/encryption-key
+              echo "Encryption key generated successfully."
+          volumeMounts:
+            - name: encryption-volume
+              mountPath: /etc/encryption
+        - name: wait-for-dependencies
+          image: alpine
+          securityContext:
+            runAsUser: 0
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              apk add --no-cache netcat-openbsd
+              
+              echo "Warte auf PostgreSQL..."
+              while ! nc -z postgres-service 5432; do
+                echo "PostgreSQL ist noch nicht verfügbar. Warte 5 Sekunden..."
+                sleep 5
+              done
+              echo "PostgreSQL ist verfügbar."
+
+              echo "Warte auf MinIO..."
+              while ! nc -z minio-service 9000; do
+                echo "MinIO ist noch nicht verfügbar. Warte 5 Sekunden..."
+                sleep 5
+              done
+              echo "MinIO ist verfügbar."          
+      containers:
+        - name: quarkus
+          image: ghcr.io/tommyneumaier/leomail/leomail-quarkus:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: QUARKUS_PROFILE
+              value: prod
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: encryption-key
+                  key: encryption-key
+          envFrom:
+            - secretRef:
+                name: minio-secrets
+            - secretRef:
+                name: quarkus-secrets
+            - secretRef:
+                name: postgres-secrets
+          livenessProbe:
+            httpGet:
+              path: /api/q/health/live
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/q/health/ready
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          volumeMounts:
+            - name: encryption-volume
+              mountPath: /etc/encryption
+      volumes:
+        - name: encryption-volume
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: quarkus-service
+spec:
+  selector:
+    app: quarkus
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080

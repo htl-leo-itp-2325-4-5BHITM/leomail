@@ -1,0 +1,60 @@
+# General
+.DS_Store
+
+# IntelliJ and WebStorm
+.idea/
+*.iml
+*.iws
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+dist/
+build/
+
+# IDE specific
+.vscode/
+
+# VueJS App (Frontend)
+app/leomail-frontend/node_modules/
+app/leomail-frontend/dist/
+app/leomail-frontend/.env.local
+app/leomail-frontend/.env.*.local
+app/leomail-frontend/.eslintcache
+app/leomail-frontend/.nuxt/
+app/leomail-frontend/public/
+app/leomail-frontend/package-lock.json
+
+# Quarkus Backend
+app/leomail-backend/target/
+app/leomail-backend/.project
+app/leomail-backend/.classpath
+app/leomail-backend/.settings/
+app/leomail-backend/.factorypath
+
+# Maven
+app/leomail-backend/.mvn/
+app/leomail-backend/mvnw
+app/leomail-backend/mvnw.cmd
+app/leomail-backend/target/
+
+# Other
+app/leomail-backend/log/
+app/leomail-backend/tmp/
+app/leomail-backend/http/priv/
+
+# Git Secret
+.gitsecret/keys/random_seed

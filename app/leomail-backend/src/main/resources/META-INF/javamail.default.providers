@@ -1,0 +1,12 @@
+# Default provider list for JavaMail
+# Format is:
+# protocol=className, vendor, type
+# Store providers
+imap=com.sun.mail.imap.IMAPStore, Oracle, store
+imaps=com.sun.mail.imap.IMAPSSLStore, Oracle, store
+pop3=com.sun.mail.pop3.POP3Store, Oracle, store
+pop3s=com.sun.mail.pop3.POP3SSLStore, Oracle, store
+
+# Transport providers
+smtp=com.sun.mail.smtp.SMTPTransport, Oracle, transport
+smtps=com.sun.mail.smtp.SMTPSSLTransport, Oracle, transport

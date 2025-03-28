@@ -1,0 +1,16 @@
+@import '../base.css';
+
+:root {
+    --font-weight-medium: 500;
+    --font-weight-bold: 700;
+}
+
+html,body{
+    font-family: 'Inter';
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100%;
+    background-color: #FBFBFB;
+    opacity: 5;
+}

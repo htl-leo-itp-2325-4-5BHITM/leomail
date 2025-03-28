@@ -1,0 +1,200 @@
+name: Build, Push, and Deploy to LeoCloud
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+
+    strategy:
+      matrix:
+        service: [backend, frontend]
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Set up Docker Buildx for multi-platform builds
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Install Java for Backend
+      - name: Install Java
+        if: matrix.service == 'backend'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+          cache-dependency-path: |
+            ./app/leomail-backend/pom.xml
+            ~/.m2/settings.xml
+
+      # Cache Maven for Backend
+      - name: Cache Maven
+        if: matrix.service == 'backend'
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven
+
+      # GHCR Login
+      - name: Log in to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build and Push Quarkus Backend Docker image
+      - name: Build and Push Quarkus Backend Docker image
+        if: matrix.service == 'backend'
+        working-directory: ./app/leomail-backend
+        run: |
+          mvn clean install -DskipTests
+          docker build --tag ghcr.io/tommyneumaier/leomail/leomail-quarkus:latest .
+          docker push ghcr.io/tommyneumaier/leomail/leomail-quarkus:latest
+
+      # Install Node for Frontend
+      - name: Install Node
+        if: matrix.service == 'frontend'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: ./app/leomail-frontend/package.json
+
+      # Cache NPM for Frontend
+      - name: Cache NPM
+        if: matrix.service == 'frontend'
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('app/leomail-frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      # Build and Push Frontend Docker image
+      - name: Build and Push Vue Docker image
+        if: matrix.service == 'frontend'
+        working-directory: ./app/leomail-frontend
+        run: |
+          npm i
+          npm run build
+          docker build --tag ghcr.io/tommyneumaier/leomail/leomail-vue:latest .
+          docker push ghcr.io/tommyneumaier/leomail/leomail-vue:latest
+
+      # Install kubectl
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      # Set up kubeconfig
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      # Create Kubernetes secrets
+      - name: Apply Kubernetes secrets
+        run: |
+          # Create or update postgres-secrets
+          kubectl create secret generic postgres-secrets \
+            --from-literal=POSTGRES_DB="${POSTGRES_DB}" \
+            --from-literal=POSTGRES_USER="${POSTGRES_USER}" \
+            --from-literal=POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+        
+          # Create or update minio-secrets
+          kubectl create secret generic minio-secrets \
+            --from-literal=MINIO_URL="${MINIO_URL}" \
+            --from-literal=MINIO_ROOT_USER="${MINIO_ROOT_USER}" \
+            --from-literal=MINIO_ROOT_PASSWORD="${MINIO_ROOT_PASSWORD}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+        
+          # Create or update quarkus-secrets with datasource credentials
+          kubectl create secret generic quarkus-secrets \
+            --from-literal=QUARKUS_DATASOURCE_JDBC_URL="jdbc:postgresql://postgres-service:5432/${POSTGRES_DB}" \
+            --from-literal=QUARKUS_DATASOURCE_USERNAME="${POSTGRES_USER}" \
+            --from-literal=QUARKUS_DATASOURCE_PASSWORD="${POSTGRES_PASSWORD}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+        env:
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          MINIO_URL: ${{ secrets.MINIO_URL }}
+          MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
+          MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+
+      # Apply Postgres and Ingress resources
+      - name: Apply Postgres and Ingress Resources
+        if: matrix.service == 'backend'
+        run: |
+          kubectl apply -f .github/k8s/postgres.yaml
+          kubectl apply -f .github/k8s/ingress.yaml
+
+      # Apply Minio resource
+      - name: Apply Minio resource
+        if: matrix.service == 'backend' || matrix.service == 'frontend'
+        run: |
+          kubectl apply -f .github/k8s/minio-filestorage.yaml
+
+      # Deploy Quarkus Backend to Kubernetes
+      - name: Deploy Quarkus Backend to Kubernetes
+        if: matrix.service == 'backend' && success()
+        run: |
+          kubectl apply -f .github/k8s/backend.yaml
+
+      # Deploy Vue Frontend to Kubernetes
+      - name: Deploy Vue Frontend to Kubernetes
+        if: matrix.service == 'frontend' && success()
+        run: |
+          kubectl apply -f .github/k8s/frontend.yaml
+
+      # Verify Backend Deployment
+      - name: Verify Backend Deployment
+        if: matrix.service == 'backend' && success()
+        run: kubectl get pods -l app=quarkus
+
+      # Verify Frontend Deployment
+      - name: Verify Frontend Deployment
+        if: matrix.service == 'frontend' && success()
+        run: kubectl get pods -l app=vue
+ # restart_pods:
+  #  needs: build_and_deploy
+   # runs-on: ubuntu-latest
+    #if: ${{ success() }}
+    #steps:
+     # - name: Checkout code
+      #  uses: actions/checkout@v3
+
+  #    - name: Install kubectl
+   #     uses: azure/setup-kubectl@v3
+    #    with:
+     #     version: 'latest'
+
+      #- name: Set up kubeconfig
+       # run: |
+        #  mkdir -p $HOME/.kube
+         # echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 -d > $HOME/.kube/config
+          #chmod 600 $HOME/.kube/config
+
+     # - name: Restart Pods
+      #  run: |
+       #   echo "Restarting pods..."
+        #  kubectl rollout restart deployment
