@@ -1,4 +1,4 @@
-package at.htlleonding.leomail.producers;
+package at.htlleonding.leomail.producer;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;

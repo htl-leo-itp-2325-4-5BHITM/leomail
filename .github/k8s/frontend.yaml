@@ -1,32 +1,32 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vue
+  name: frontend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: vue
+      app: frontend
   template:
     metadata:
       labels:
-        app: vue
+        app: frontend
     spec:
       containers:
       - name: vue
         imagePullPolicy: Always
-        image: ghcr.io/tommyneumaier/leomail/leomail-vue:latest
+        image: ghcr.io/htl-leo-itp-2325-4-5BHITM/leomail-frontend:latest
         ports:
         - containerPort: 80
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: vue-service
+  name: frontend-service
 spec:
   ports:
     - port: 80
       targetPort: 80
       protocol: TCP
   selector:
-    app: vue
+    app: frontend

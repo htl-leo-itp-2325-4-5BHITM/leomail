@@ -6,11 +6,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: quarkus
+      app: backend
   template:
     metadata:
       labels:
-        app: quarkus
+        app: backend
     spec:
       initContainers:
         - name: init-generate-encryption-key
@@ -55,8 +55,8 @@ spec:
               done
               echo "MinIO ist verfügbar."          
       containers:
-        - name: quarkus
-          image: ghcr.io/tommyneumaier/leomail/leomail-quarkus:latest
+        - name: backend
+          image: ghcr.io/htl-leo-itp-2325-4-5BHITM/leomail-backend:latest
           ports:
             - containerPort: 8080
           env:
@@ -96,10 +96,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: quarkus-service
+  name: backend-service
 spec:
   selector:
-    app: quarkus
+    app: backend
   ports:
     - protocol: TCP
       port: 8080
