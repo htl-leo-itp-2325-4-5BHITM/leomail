@@ -110,37 +110,6 @@ jobs:
           echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 -d > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
 
-      # Create Kubernetes secrets
-      - name: Apply Kubernetes secrets
-        run: |
-          # Create or update postgres-secrets
-          kubectl create secret generic postgres-secrets \
-            --from-literal=POSTGRES_DB="${POSTGRES_DB}" \
-            --from-literal=POSTGRES_USER="${POSTGRES_USER}" \
-            --from-literal=POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
-            --dry-run=client -o yaml | kubectl apply -f -
-        
-          # Create or update minio-secrets
-          kubectl create secret generic minio-secrets \
-            --from-literal=MINIO_URL="${MINIO_URL}" \
-            --from-literal=MINIO_ROOT_USER="${MINIO_ROOT_USER}" \
-            --from-literal=MINIO_ROOT_PASSWORD="${MINIO_ROOT_PASSWORD}" \
-            --dry-run=client -o yaml | kubectl apply -f -
-        
-          # Create or update quarkus-secrets with datasource credentials
-          kubectl create secret generic quarkus-secrets \
-            --from-literal=QUARKUS_DATASOURCE_JDBC_URL="jdbc:postgresql://postgres-service:5432/${POSTGRES_DB}" \
-            --from-literal=QUARKUS_DATASOURCE_USERNAME="${POSTGRES_USER}" \
-            --from-literal=QUARKUS_DATASOURCE_PASSWORD="${POSTGRES_PASSWORD}" \
-            --dry-run=client -o yaml | kubectl apply -f -
-        env:
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          MINIO_URL: ${{ secrets.MINIO_URL }}
-          MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
-          MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
-
       # Apply Postgres and Ingress resources
       - name: Apply Postgres and Ingress Resources
         if: matrix.service == 'backend'
@@ -169,12 +138,12 @@ jobs:
       # Verify Backend Deployment
       - name: Verify Backend Deployment
         if: matrix.service == 'backend' && success()
-        run: kubectl get pods -l app=quarkus
+        run: kubectl get pods -l app=backend
 
       # Verify Frontend Deployment
       - name: Verify Frontend Deployment
         if: matrix.service == 'frontend' && success()
-        run: kubectl get pods -l app=vue
+        run: kubectl get pods -l app=frontend
  # restart_pods:
   #  needs: build_and_deploy
    # runs-on: ubuntu-latest
