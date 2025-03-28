@@ -15,7 +15,7 @@ spec:
       containers:
       - name: vue
         imagePullPolicy: Always
-        image: ghcr.io/htl-leo-itp-2325-4-5BHITM/leomail-frontend:latest
+        image: ghcr.io/htl-leo-itp-2325-4-5bhitm/leomail-frontend:latest
         ports:
         - containerPort: 80
 ---

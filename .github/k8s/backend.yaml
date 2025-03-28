@@ -56,7 +56,7 @@ spec:
               echo "MinIO ist verfügbar."          
       containers:
         - name: backend
-          image: ghcr.io/htl-leo-itp-2325-4-5BHITM/leomail-backend:latest
+          image: ghcr.io/htl-leo-itp-2325-4-5bhitm/leomail-backend:latest
           ports:
             - containerPort: 8080
           env:

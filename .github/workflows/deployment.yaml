@@ -65,8 +65,8 @@ jobs:
         working-directory: ./app/leomail-backend
         run: |
           mvn clean install -DskipTests
-          docker build --tag ghcr.io/htl-leo-itp-2325-4-5BHITM/leomail-backend:latest .
-          docker push ghcr.io/htl-leo-itp-2325-4-5BHITM/leomail-backend:latest
+          docker build --tag ghcr.io/htl-leo-itp-2325-4-5bhitm/leomail-backend:latest .
+          docker push ghcr.io/htl-leo-itp-2325-4-5bhitm/leomail-backend:latest
 
       # Install Node for Frontend
       - name: Install Node
@@ -94,8 +94,8 @@ jobs:
         run: |
           npm i
           npm run build
-          docker build --tag ghcr.io/htl-leo-itp-2325-4-5BHITM/leomail-frontend:latest .
-          docker push ghcr.io/htl-leo-itp-2325-4-5BHITM/leomail-frontend:latest
+          docker build --tag ghcr.io/htl-leo-itp-2325-4-5bhitm/leomail-frontend:latest .
+          docker push ghcr.io/htl-leo-itp-2325-4-5bhitm/leomail-frontend:latest
 
       # Install kubectl
       - name: Install kubectl
